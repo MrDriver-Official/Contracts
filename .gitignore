@@ -4,6 +4,5 @@ artifacts
 .idea/*
 node_modules/*
 contracts/flattened/*.sol
-flatten-contracts
 .secret
 migrations
