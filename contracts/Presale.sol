@@ -215,6 +215,7 @@ contract MDRPresale is Ownable, Referral, ReentrancyGuard {
     
     uint256 public startDate = 1669177000;                  // 2022/11/25 02:00:00 UTC
     uint256 public endDate = 1669180000;                    // 2022/12/9 02:00:00 UTC
+    uint256 public lockDate = 1641427200;                    // 2022/1/6 00:00:00 UTC
     
     uint256 public totalTokensToSell = 50000000 * 10**18;   // 50000000 MDR tokens for sell
     uint256 public mdrPerBusd = 10 * 10**18;                // 1 Busd = 10 MDR
@@ -240,6 +241,12 @@ contract MDRPresale is Ownable, Referral, ReentrancyGuard {
             buyAmount > 0 && buyAmount <= unsoldTokens(),
             'Insufficient buy amount'
         );
+        _;
+    }
+
+    modifier checkWithdrawLPRequirements() {
+        require(now >= lockDate, 'LP is locked.');
+        require(saleEnded == true, 'Sale not finished.');
         _;
     }
 
@@ -326,6 +333,13 @@ contract MDRPresale is Ownable, Referral, ReentrancyGuard {
         endDate = _endDate;
     }
 
+    // function to set the presale end date
+    // only owner can call this function
+    function setLockDate(uint256 _lockDate) public onlyOwner {
+        require(saleEnded == false);
+        lockDate = _lockDate;
+    }
+
     // function to set the total tokens to sell
     function setTotalTokensToSell(uint256 _totalTokensToSell) public onlyOwner {
         totalTokensToSell = _totalTokensToSell;
@@ -350,16 +364,7 @@ contract MDRPresale is Ownable, Referral, ReentrancyGuard {
     //function to end the sale
     function endSale() public onlyOwner {
         require(saleEnded == false);
-
         saleEnded = true;
-        
-        // uint256 teamAmount = address(this).balance.div(10);
-        // uint256 bnbAmount = address(this).balance - teamAmount;
-        // uint256 tokenAmount = MDR.balanceOf(address(this));
-
-        // teamAddr.transfer(teamAmount);
-        // addLiquidity(tokenAmount, bnbAmount);
-
     }
 
     //function to withdraw unsold tokens
@@ -370,11 +375,11 @@ contract MDRPresale is Ownable, Referral, ReentrancyGuard {
     }
 
     //function to withdraw locked lp tokens
-    function withdrawLockedLPTokens() public onlyOwner {
+    function withdrawLockedLPTokens() public onlyOwner checkWithdrawLPRequirements{
         uint256 lockedLPTokens = lockedLPTokens();
         require(lockedLPTokens > 0, "No locked LP tokens");
 
-        IUniswapV2Pair(uniswapV2Pair).transfer(owner(), lockedLPTokens);
+        IUniswapV2Pair(uniswapV2Pair).transfer(adminWallet, lockedLPTokens);
     }
 
     //function to return the amount of unsold tokens
@@ -455,4 +460,5 @@ contract MDRPresale is Ownable, Referral, ReentrancyGuard {
         require(_liquidityRate < decimals, "Presale: Rate is not valid");
         liquidityRate = _liquidityRate;
     }
+
 }

@@ -5,11 +5,12 @@ import "./Interface8/IERC20Metadata.sol";
 import "./Lib8/Ownable.sol";
 import "./Lib8/SafeERC20.sol";
 import "./Lib8/ReentrancyGuard.sol";
+import "./Referral8.sol";
 
 
 // File: contracts/SmartChefInitializable.sol
 
-contract SmartChefInitializable is Ownable, ReentrancyGuard {
+contract SmartChefInitializableNW is Ownable, Referral, ReentrancyGuard {
     using SafeERC20 for IERC20Metadata;
 
     // The address of the smart chef factory
@@ -71,7 +72,23 @@ contract SmartChefInitializable is Ownable, ReentrancyGuard {
     /**
      * @notice Constructor
      */
-    constructor() {
+    constructor(
+        address _BUSD,
+        uint _decimals,
+        uint _referralBonus,
+        uint _secondsUntilInactive,
+        bool _onlyRewardActiveReferrers,
+        uint256[] memory _levelRate,
+        uint256[] memory _refereeBonusRateMap
+    ) Referral (
+        _BUSD,
+        _decimals,
+        _referralBonus,
+        _secondsUntilInactive,
+        _onlyRewardActiveReferrers,
+        _levelRate,
+        _refereeBonusRateMap
+    ) public {
         SMART_CHEF_FACTORY = msg.sender;
     }
 
@@ -130,25 +147,35 @@ contract SmartChefInitializable is Ownable, ReentrancyGuard {
      * @notice Deposit staked tokens and collect reward tokens (if any)
      * @param _amount: amount to withdraw (in rewardToken)
      */
-    function deposit(uint256 _amount) external nonReentrant {
+    function deposit(uint256 _amount, address referrer) external nonReentrant {
         UserInfo storage user = userInfo[msg.sender];
 
         userLimit = hasUserLimit();
 
         require(!userLimit || ((_amount + user.amount) <= poolLimitPerUser), "Deposit: Amount above limit");
+        require(referrer != address(0), "Presale: referrer is not valid.");
+
+        if( referrer != address(msg.sender) ) {
+            if(!hasReferrer(msg.sender)){
+                addReferrer(referrer);
+            }
+        }
 
         _updatePool();
 
         if (user.amount > 0) {
             uint256 pending = (user.amount * accTokenPerShare) / PRECISION_FACTOR - user.rewardDebt;
             if (pending > 0) {
-                rewardToken.safeTransfer(address(msg.sender), pending);
+                // pay referral
+                uint256 referralAmount = payReferral(pending);
+
+                rewardToken.safeTransfer(address(msg.sender), pending - referralAmount);
             }
         }
 
         if (_amount > 0) {
             user.amount = user.amount + _amount;
-            stakedToken.safeTransferFrom(address(msg.sender), address(this), _amount);
+            stakedToken.safeTransferFrom(address(msg.sender), address(this), _amount);    
         }
 
         user.rewardDebt = (user.amount * accTokenPerShare) / PRECISION_FACTOR;
@@ -168,13 +195,16 @@ contract SmartChefInitializable is Ownable, ReentrancyGuard {
 
         uint256 pending = (user.amount * accTokenPerShare) / PRECISION_FACTOR - user.rewardDebt;
 
-        if (_amount > 0) {
-            user.amount = user.amount - _amount;
-            stakedToken.safeTransfer(address(msg.sender), _amount);
-        }
+        // if (_amount > 0) {
+        //     user.amount = user.amount - _amount;
+        //     stakedToken.safeTransfer(address(msg.sender), _amount);
+        // }
 
         if (pending > 0) {
-            rewardToken.safeTransfer(address(msg.sender), pending);
+            // pay referral
+            uint256 referralAmount = payReferral(pending);
+
+            rewardToken.safeTransfer(address(msg.sender), pending - referralAmount);
         }
 
         user.rewardDebt = (user.amount * accTokenPerShare) / PRECISION_FACTOR;

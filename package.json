@@ -7,9 +7,11 @@
     "migrate": "truffle migrate --network testnet --reset",
     "compile": "truffle compile --network testnet",
     "test": "rm -rf contracts/flattened/*.sol && truffle test",
-    "flatten": "truffle-flattener contracts/MrDriverToken.sol > flatten-contracts/MrDriverToken.sol && truffle-flattener contracts/BitDriverToken.sol > flatten-contracts/BitDriverToken.sol && node flatten_fix.js",
-    "flatten-smartchef": "truffle-flattener contracts/SmartChefFactory.sol > flatten-contracts/SmartChefFactory.sol && truffle-flattener contracts/SmartChefInitializable.sol > flatten-contracts/SmartChefInitializable.sol && node flatten_fix.js",
-    "flatten-presale": "truffle-flattener contracts/Presale.sol > flatten-contracts/Presale.sol && node flatten_fix.js"
+    "flatten-token": "truffle-flattener contracts/MrDriverToken.sol > flatten-contracts/MrDriverToken.sol && truffle-flattener contracts/BitDriverToken.sol > flatten-contracts/BitDriverToken.sol",
+    "flatten-smartchef": "truffle-flattener contracts/SmartChefInitializable.sol > flatten-contracts/SmartChefInitializable.sol && truffle-flattener contracts/SmartChefInitializableNW.sol > flatten-contracts/SmartChefInitializableNW.sol",
+    "flatten-presale": "truffle-flattener contracts/Presale.sol > flatten-contracts/Presale.sol",
+    "flatten": "yarn flatten-token && yarn flatten-smartchef && yarn flatten-presale",
+    "flatten-fix": "node flatten_fix.js"
   },
   "dependencies": {
     "@openzeppelin/contracts": "^4.5.0",
